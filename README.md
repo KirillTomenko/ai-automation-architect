@@ -2,6 +2,11 @@
 
 [![CI](https://github.com/KirillTomenko/ai-automation-architect/actions/workflows/ci.yml/badge.svg)](https://github.com/KirillTomenko/ai-automation-architect/actions/workflows/ci.yml)
 
+
+![Форма ввода](docs/screenshot-form.png)
+
+![Результат — Automation Blueprint](docs/screenshot-result.png)
+
 Описание бизнес-процесса обычным текстом → **Automation Blueprint** (JSON): карта процесса с актёрами и шагами, оценка автоматизируемости каждого шага, предлагаемая архитектура из типовых блоков, риски и MVP-scope.
 
 Система принимает свободное описание — так, как процесс объяснил бы владелец бизнеса в двух-трёх предложениях (до 3000 символов), без формализованных схем. На выходе — структурированный документ: шаги с входами/выходами и исполнителями, процент автоматизации каждого шага, архитектура решения в виде графа из фиксированного каталога блоков, риски, MVP-scope и оценка трудозатрат по блокам.
