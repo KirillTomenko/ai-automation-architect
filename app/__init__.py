@@ -1,0 +1,1 @@
+"""Пакет приложения AI Automation Architect."""

@@ -1,0 +1,13 @@
+﻿__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+Thumbs.db
+
+# Рабочие раннеры/логи и tmp-артефакты — не в репозиторий, но не мешают локально
+tmp_*
+tmp_*/

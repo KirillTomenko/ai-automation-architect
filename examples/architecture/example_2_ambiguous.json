@@ -1,0 +1,38 @@
+{
+  "nodes": [
+    {
+      "id": "block_1",
+      "block_type": "human_escalation",
+      "step_ids": [
+        "step_1"
+      ],
+      "note": "канал входа не назван в тексте, требует уточнения перед автоматизацией приёма"
+    },
+    {
+      "id": "block_2",
+      "block_type": "human_escalation",
+      "step_ids": [
+        "step_2"
+      ],
+      "note": null
+    },
+    {
+      "id": "block_3",
+      "block_type": "human_escalation",
+      "step_ids": [
+        "step_3"
+      ],
+      "note": null
+    }
+  ],
+  "edges": [
+    {
+      "from": "block_1",
+      "to": "block_2"
+    },
+    {
+      "from": "block_2",
+      "to": "block_3"
+    }
+  ]
+}

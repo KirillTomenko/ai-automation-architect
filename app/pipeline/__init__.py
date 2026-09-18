@@ -1,0 +1,1 @@
+"""Стадии пайплайна: extractor → classifier → architect → packager."""

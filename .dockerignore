@@ -1,0 +1,25 @@
+# Синхронизировано с .gitignore: секреты и мусор в образ не попадают.
+.env
+tmp_*
+tmp_*/
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+Thumbs.db
+
+# Сборочное окружение и артефакты, не нужные внутри образа
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+.claude/
+tests/
+README.md
+CLAUDE.md

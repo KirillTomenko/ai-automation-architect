@@ -1,0 +1,25 @@
+categories:
+  - name: data_intake
+    label: "Приём/сбор данных (вебхук, входящее сообщение)"
+    range: [95, 100]
+  - name: structured_extraction
+    label: "Извлечение структурированных данных (парсинг, NER)"
+    range: [85, 100]
+  - name: classification_routing
+    label: "Классификация / маршрутизация"
+    range: [80, 95]
+  - name: standard_response
+    label: "Типовой ответ (FAQ, RAG)"
+    range: [70, 90]
+  - name: personalized_generation
+    label: "Генерация персонализированного контента"
+    range: [50, 75]
+  - name: ambiguous_judgment
+    label: "Оценка неоднозначного случая / суждение"
+    range: [20, 50]
+  - name: sensitive_negotiation
+    label: "Переговоры, эмоционально чувствительное общение"
+    range: [0, 30]
+  - name: legal_financial_decision
+    label: "Решение с юридическими/финансовыми последствиями"
+    range: [0, 20]

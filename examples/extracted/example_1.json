@@ -1,0 +1,62 @@
+{
+  "channel_named": true,
+  "channel_gap_reason": null,
+  "actors": [
+    "менеджер",
+    "руководитель"
+  ],
+  "entry_point": "заявка в Telegram",
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Перенос заявки в таблицу",
+      "input": "заявка в Telegram",
+      "output": "заявка в таблице",
+      "actor": "менеджер",
+      "actor_named": true,
+      "actor_gap_reason": null,
+      "branching_criteria_named": null,
+      "branching_criteria_gap_reason": null
+    },
+    {
+      "id": "step_2",
+      "name": "Определение типа клиента",
+      "input": "заявка в таблице",
+      "output": "тип клиента определён",
+      "actor": "менеджер",
+      "actor_named": true,
+      "actor_gap_reason": null,
+      "branching_criteria_named": null,
+      "branching_criteria_gap_reason": null
+    },
+    {
+      "id": "step_3",
+      "name": "Ответ на типовые вопросы",
+      "input": "тип клиента определён",
+      "output": "ответ на типовые вопросы",
+      "actor": "менеджер",
+      "actor_named": true,
+      "actor_gap_reason": null,
+      "branching_criteria_named": null,
+      "branching_criteria_gap_reason": null
+    },
+    {
+      "id": "step_4",
+      "name": "Передача сложных обращений руководителю",
+      "input": "сложное обращение",
+      "output": "сложное обращение передано руководителю",
+      "actor": "менеджер",
+      "actor_named": true,
+      "actor_gap_reason": null,
+      "branching_criteria_named": false,
+      "branching_criteria_gap_reason": "Критерий 'сложное обращение' не операционализирован в тексте"
+    }
+  ],
+  "assumptions": [
+    {
+      "step_id": "step_4",
+      "gap": "criteria",
+      "note": "Критерий 'сложное обращение' не операционализирован в тексте"
+    }
+  ]
+}

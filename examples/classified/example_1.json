@@ -1,0 +1,28 @@
+{
+  "automation_candidates": [
+    {
+      "step_id": "step_1",
+      "category": "data_intake",
+      "automation_pct": 95,
+      "reasoning": "Шаг имеет четкие входные и выходные данные, что позволяет высокую степень автоматизации."
+    },
+    {
+      "step_id": "step_2",
+      "category": "classification_routing",
+      "automation_pct": 85,
+      "reasoning": "Определение типа клиента может быть стандартизировано, но требует человеческого суждения, что снижает автоматизацию."
+    },
+    {
+      "step_id": "step_3",
+      "category": "standard_response",
+      "automation_pct": 80,
+      "reasoning": "Ответы на типовые вопросы могут быть автоматизированы, но требуют проверки контекста, что снижает процент автоматизации."
+    },
+    {
+      "step_id": "step_4",
+      "category": "ambiguous_judgment",
+      "automation_pct": 30,
+      "reasoning": "Передача сложных обращений зависит от неясного критерия, что значительно снижает возможность автоматизации."
+    }
+  ]
+}

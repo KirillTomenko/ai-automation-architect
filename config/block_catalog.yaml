@@ -1,0 +1,19 @@
+blocks:
+  - name: bot_webhook_receiver
+    label: "Bot/Webhook Receiver"
+  - name: data_extractor_llm
+    label: "Data Extractor (LLM)"
+  - name: classifier_router
+    label: "Classifier/Router"
+  - name: rag_responder
+    label: "RAG Responder"
+  - name: generator_llm
+    label: "Generator (LLM)"
+  - name: rules_engine
+    label: "Rules Engine"
+  - name: crm_connector
+    label: "CRM Connector"
+  - name: notifier
+    label: "Notifier"
+  - name: human_escalation
+    label: "Human Escalation"

@@ -1,0 +1,68 @@
+{
+  "channel_named": false,
+  "channel_gap_reason": "В тексте не указано, каким способом поступают обращения (канал не назван).",
+  "actors": [],
+  "entry_point": "обращение от клиента",
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Разбор обращения",
+      "input": "обращение от клиента",
+      "output": "разобранное обращение",
+      "actor": "не указано в тексте",
+      "actor_named": false,
+      "actor_gap_reason": "В тексте не указано, кто разбирает обращения.",
+      "branching_criteria_named": null,
+      "branching_criteria_gap_reason": null
+    },
+    {
+      "id": "step_2",
+      "name": "Ответ на вопросы",
+      "input": "разобранное обращение",
+      "output": "ответ клиенту",
+      "actor": "не указано в тексте",
+      "actor_named": false,
+      "actor_gap_reason": "В тексте не указано, кто отвечает на вопросы.",
+      "branching_criteria_named": null,
+      "branching_criteria_gap_reason": null
+    },
+    {
+      "id": "step_3",
+      "name": "Передача обращения дальше",
+      "input": "обращение, если оно сложное",
+      "output": "обращение передано дальше",
+      "actor": "не указано в тексте",
+      "actor_named": false,
+      "actor_gap_reason": "В тексте не указано, кто передает обращения дальше.",
+      "branching_criteria_named": false,
+      "branching_criteria_gap_reason": "Критерий 'если что-то сложное' не операционализирован, не указано, что считается сложным."
+    }
+  ],
+  "assumptions": [
+    {
+      "step_id": null,
+      "gap": "channel",
+      "note": "В тексте не указано, каким способом поступают обращения (канал не назван)."
+    },
+    {
+      "step_id": "step_1",
+      "gap": "actor",
+      "note": "В тексте не указано, кто разбирает обращения."
+    },
+    {
+      "step_id": "step_2",
+      "gap": "actor",
+      "note": "В тексте не указано, кто отвечает на вопросы."
+    },
+    {
+      "step_id": "step_3",
+      "gap": "actor",
+      "note": "В тексте не указано, кто передает обращения дальше."
+    },
+    {
+      "step_id": "step_3",
+      "gap": "criteria",
+      "note": "Критерий 'если что-то сложное' не операционализирован, не указано, что считается сложным."
+    }
+  ]
+}

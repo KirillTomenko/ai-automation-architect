@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {
+      "id": "block_1",
+      "block_type": "bot_webhook_receiver",
+      "step_ids": [
+        "step_1"
+      ],
+      "note": null
+    },
+    {
+      "id": "block_2",
+      "block_type": "data_extractor_llm",
+      "step_ids": [
+        "step_1"
+      ],
+      "note": null
+    },
+    {
+      "id": "block_3",
+      "block_type": "classifier_router",
+      "step_ids": [
+        "step_2"
+      ],
+      "note": null
+    },
+    {
+      "id": "block_4",
+      "block_type": "rag_responder",
+      "step_ids": [
+        "step_3"
+      ],
+      "note": null
+    },
+    {
+      "id": "block_5",
+      "block_type": "human_escalation",
+      "step_ids": [
+        "step_4"
+      ],
+      "note": "Критерий 'сложное обращение' не операционализирован в тексте"
+    }
+  ],
+  "edges": [
+    {
+      "from": "block_1",
+      "to": "block_2"
+    },
+    {
+      "from": "block_2",
+      "to": "block_3"
+    },
+    {
+      "from": "block_3",
+      "to": "block_4"
+    },
+    {
+      "from": "block_4",
+      "to": "block_5"
+    }
+  ]
+}

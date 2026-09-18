@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Automation Architect</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1a1a1a; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 22px; margin: 0; }
+  .subtitle { color: #666; margin: 6px 0 0; }
+  .card { background: #fff; border: 1px solid #d9d9d9; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  label { font-size: 14px; color: #444; }
+  textarea { width: 100%; min-height: 110px; font: inherit; padding: 8px; border: 1px solid #d9d9d9; border-radius: 6px; margin-top: 6px; }
+  select, button { font: inherit; border-radius: 6px; }
+  select { padding: 8px; border: 1px solid #d9d9d9; margin-top: 6px; }
+  button { background: #2563eb; color: #fff; border: 0; padding: 10px 16px; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .status { color: #666; font-size: 14px; }
+  .error { color: #b32821; background: #fdecec; border: 1px solid #f3c1c1; border-radius: 6px; padding: 10px; margin-top: 10px; white-space: pre-wrap; display: none; }
+  /* Ожидаемые ситуации (лимит ProxyAPI, rate-limit) — предупреждение, а не сбой. */
+  .error.warn { background: #fff8e6; border-color: #f0e0b0; color: #8a6d3b; }
+  .candidates { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .cand { border: 1px solid #d9d9d9; border-radius: 6px; padding: 12px; }
+  .cand .step { font-weight: 600; }
+  .cand .cat { color: #666; font-size: 13px; margin-top: 2px; }
+  .badge { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #fff; }
+  .cand .why { margin-top: 8px; font-size: 14px; }
+  /* Флаг пробела данных: тот же янтарный регистр, что hitl-note и gap-ноды
+     диаграммы — не «мелочь оформления», а то, что risks называют причиной риска. */
+  .cand-gap { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 6px; color: #8a6d3b; font-size: 13px; margin-top: 8px; padding: 6px 8px; }
+  .diagrams { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 900px) { .diagrams { grid-template-columns: 1fr; } }
+  .diagram { border: 1px solid #d9d9d9; border-radius: 6px; padding: 8px; background: #fff; overflow-x: auto; }
+  .diagram h3 { margin: 4px 0 8px; font-size: 14px; color: #666; }
+  .diagram pre { font-size: 12px; white-space: pre-wrap; }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin: 4px 0; font-size: 14px; }
+  .mvp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mvp h3 { margin: 0 0 4px; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; border-bottom: 1px solid #d9d9d9; padding: 6px 8px; font-size: 14px; }
+  .process-text { background: #f8f9fa; border-left: 3px solid #d0d4da; border-radius: 4px; color: #333; font-size: 14px; margin: 0 0 10px; padding: 8px 12px; }
+  .chips { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+  .chips-label { color: #444; font-size: 14px; }
+  .chip { background: #eef2ff; border: 1px solid #d9dce3; border-radius: 10px; color: #374151; font-size: 13px; padding: 2px 10px; }
+  .table-wrap { overflow-x: auto; }
+  td.actor-unspecified { background: #fff8e6; color: #8a6d3b; font-style: italic; }
+  .hitl-note { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 6px; color: #8a6d3b; font-size: 13px; margin: 10px 0 0; padding: 8px 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AI Automation Architect</h1>
+  <p class="subtitle">Свободный текст бизнес-процесса → Automation Blueprint: шаги, % автоматизации, архитектура, риски, MVP-scope.</p>
+
+  <div class="card">
+    <label for="examples">Готовый пример (рендер без вызова LLM):</label><br>
+    <select id="examples"><option value="">— выберите —</option></select>
+
+    <label for="description" style="display:block; margin-top:12px;">Описание процесса (до 3000 символов):</label>
+    <textarea id="description" maxlength="3000"
+      placeholder="Например: У нас 50–100 заявок в Telegram в день. Менеджер вручную переносит их в таблицу, определяет тип клиента, отвечает на типовые вопросы и передаёт сложные обращения руководителю"></textarea>
+
+    <div class="row">
+      <button id="build">Построить Blueprint</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="error" id="error"></div>
+  </div>
+
+  <div id="result" style="display:none">
+    <div class="card">
+      <h2>Business Process</h2>
+      <p class="process-text" id="process-text"></p>
+      <div class="chips" id="actors"></div>
+      <div class="table-wrap"><table id="steps-table"></table></div>
+      <p class="hitl-note" id="hitl-note" style="display:none"></p>
+    </div>
+    <div class="card">
+      <h2>Automation Opportunities</h2>
+      <div id="candidates" class="candidates"></div>
+    </div>
+    <div class="card">
+      <h2>Диаграммы</h2>
+      <div class="diagrams">
+        <div class="diagram"><h3>Process Flow</h3><div id="flow"></div></div>
+        <div class="diagram"><h3>Architecture</h3><div id="arch"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Integrations</h2>
+      <ul id="integrations"></ul>
+    </div>
+    <div class="card">
+      <h2>Risks</h2>
+      <ul id="risks"></ul>
+    </div>
+    <div class="card">
+      <h2>MVP Scope</h2>
+      <div class="mvp">
+        <div><h3>In</h3><ul id="mvp-in"></ul></div>
+        <div><h3>Out</h3><ul id="mvp-out"></ul></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Estimated Effort</h2>
+      <table id="effort"></table>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+mermaid.initialize({ startOnLoad: false, flowchart: { htmlLabels: true } });
+
+let renderSeq = 0;
+let blockLabels = {};
+let categoryLabels = {};
+
+// Placeholder актора Stage 1 (ACTOR_UNSPECIFIED из app/schemas.py).
+// Означает пробел данных, который пайплайн сам считает значимым (risks, reasoning,
+// mvp_scope.out) — поэтому на фронте это янтарный флаг (как gap-ноды диаграммы),
+// а не серая сноска: приглушённо, но на уровне важности из risks.
+const ACTOR_UNSPECIFIED = "не указано в тексте";
+
+// HTML-экранирование — весь текст из blueprint (LLM-выход) вставляем безопасно.
+const hEsc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// Mermaid-экранирование — только кавычки, как _esc в app/render/mermaid.py.
+const mEsc = (s) => String(s).replace(/"/g, "&quot;");
+
+function processFlowMermaid(bp) {
+  const lines = ["flowchart TD"];
+  const hitl = new Set(bp.human_in_the_loop);
+  for (const step of bp.steps) {
+    let label = mEsc(step.name);
+    if (hitl.has(step.id)) label = "🧑 " + label;
+    lines.push(`    ${step.id}["${label}"]`);
+  }
+  for (let i = 0; i < bp.steps.length - 1; i++) {
+    lines.push(`    ${bp.steps[i].id} --> ${bp.steps[i + 1].id}`);
+  }
+  const hitlIds = bp.steps.filter((s) => hitl.has(s.id)).map((s) => s.id);
+  if (hitlIds.length) {
+    lines.push("    classDef hitl fill:#ffe3e3,stroke:#c0392b,stroke-width:2px;");
+    lines.push(`    class ${hitlIds.join(",")} hitl`);
+  }
+  return lines.join("\n");
+}
+
+function architectureMermaid(bp) {
+  const lines = ["flowchart TD"];
+  const gaps = [];
+  for (const node of bp.architecture.nodes) {
+    let text = mEsc(blockLabels[node.block_type] || node.block_type);
+    if (node.note) {
+      text += `<br/>⚠️ ${mEsc(node.note)}`;
+      gaps.push(node.id);
+    }
+    lines.push(`    ${node.id}["${text}"]`);
+  }
+  for (const edge of bp.architecture.edges) {
+    lines.push(`    ${edge.from} --> ${edge.to}`);
+  }
+  if (gaps.length) {
+    lines.push("    classDef gap fill:#fff3cd,stroke:#b8860b,stroke-width:2px;");
+    lines.push(`    class ${gaps.join(",")} gap`);
+  }
+  return lines.join("\n");
+}
+
+function pctColor(p) {
+  return p >= 80 ? "#2e7d32" : (p >= 50 ? "#b8860b" : "#c0392b");
+}
+
+async function renderDiagram(id, text) {
+  const el = document.getElementById(id);
+  el.innerHTML = "";
+  try {
+    const { svg } = await mermaid.render("m" + renderSeq++, text);
+    el.innerHTML = svg;
+  } catch (e) {
+    // Честный фолбэк: сырой текст диаграммы + причина — вместо тихой пустоты.
+    const pre = document.createElement("pre");
+    pre.textContent = "Не удалось отрендерить диаграмму: " + e + "\n\n" + text;
+    el.appendChild(pre);
+  }
+}
+
+function fillList(id, items) {
+  const ul = document.getElementById(id);
+  ul.innerHTML = "";
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.textContent = item;
+    ul.appendChild(li);
+  }
+}
+
+function renderBusinessProcess(bp, byId) {
+  document.getElementById("process-text").textContent = bp.process;
+
+  // Актёры могут отсутствовать (example_2_ambiguous: actors=[]) — строка прячется.
+  const actorsEl = document.getElementById("actors");
+  actorsEl.innerHTML = "";
+  if (bp.actors.length) {
+    const label = document.createElement("span");
+    label.className = "chips-label";
+    label.textContent = "Актёры:";
+    actorsEl.appendChild(label);
+    for (const actor of bp.actors) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = actor;
+      actorsEl.appendChild(chip);
+    }
+    actorsEl.style.display = "";
+  } else {
+    actorsEl.style.display = "none";
+  }
+
+  const table = document.getElementById("steps-table");
+  table.innerHTML = "<tr><th>№</th><th>Шаг</th><th>Вход</th><th>Выход</th><th>Актёр</th></tr>";
+  bp.steps.forEach((step, index) => {
+    const tr = document.createElement("tr");
+    const unspecified = step.actor === ACTOR_UNSPECIFIED;
+    tr.innerHTML =
+      `<td>${index + 1}</td>` +
+      `<td>${hEsc(step.name)}</td>` +
+      `<td>${hEsc(step.input)}</td>` +
+      `<td>${hEsc(step.output)}</td>` +
+      `<td${unspecified ? ' class="actor-unspecified"' : ""}>${hEsc(step.actor)}</td>`;
+    table.appendChild(tr);
+  });
+
+  // human_in_the_loop виден и как 🧑 на flow-диаграмме — здесь дублируем именами.
+  const hitlEl = document.getElementById("hitl-note");
+  if (bp.human_in_the_loop.length) {
+    const names = bp.human_in_the_loop.map((id) => (byId[id] ? byId[id].name : id));
+    hitlEl.textContent = "🧑 Остаётся за человеком: " + names.join(", ");
+    hitlEl.style.display = "";
+  } else {
+    hitlEl.style.display = "none";
+  }
+}
+
+function renderBlueprint(bp) {
+  setError("");
+  document.getElementById("result").style.display = "";
+
+  const byId = Object.fromEntries(bp.steps.map((s) => [s.id, s]));
+  renderBusinessProcess(bp, byId);
+
+  const cands = document.getElementById("candidates");
+  cands.innerHTML = "";
+  for (const c of bp.automation_candidates) {
+    const step = byId[c.step_id];
+    const stepUnspecified = step && step.actor === ACTOR_UNSPECIFIED;
+    const div = document.createElement("div");
+    div.className = "cand";
+    div.innerHTML =
+      `<div class="step">${hEsc(step ? step.name : c.step_id)} ` +
+      `<span style="color:#666;font-weight:400">(${hEsc(c.step_id)})</span></div>` +
+      `<div class="cat">${hEsc(categoryLabels[c.category] || c.category)}</div>` +
+      `<span class="badge" style="background:${pctColor(c.automation_pct)}">${c.automation_pct}%</span>` +
+      (stepUnspecified ? `<div class="cand-gap">⚠️ Исполнитель не указан в тексте</div>` : "") +
+      `<div class="why">${hEsc(c.reasoning)}</div>`;
+    cands.appendChild(div);
+  }
+
+  renderDiagram("flow", processFlowMermaid(bp));
+  renderDiagram("arch", architectureMermaid(bp));
+
+  fillList("integrations", bp.integrations);
+  fillList("risks", bp.risks);
+  fillList("mvp-in", bp.mvp_scope["in"]);
+  fillList("mvp-out", bp.mvp_scope.out);
+
+  const table = document.getElementById("effort");
+  table.innerHTML = "<tr><th>Компонент</th><th>Оценка</th></tr>";
+  for (const [component, estimate] of Object.entries(bp.estimated_effort)) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${hEsc(component)}</td><td>${hEsc(estimate)}</td>`;
+    table.appendChild(tr);
+  }
+}
+
+function setStatus(text) { document.getElementById("status").textContent = text; }
+function setError(msg, warn = false) {
+  const el = document.getElementById("error");
+  el.style.display = msg ? "block" : "none";
+  el.classList.toggle("warn", warn);
+  el.textContent = msg;
+}
+
+// Ошибки API в человекочитаемый текст: 422 (список) и 502/500 (detail-объект).
+function detailMsg(status, data) {
+  const d = data && data.detail;
+  if (Array.isArray(d)) return d.map((e) => e.msg).join("; ");
+  if (d && typeof d === "object") {
+    let msg = d.error || ("Ошибка " + status);
+    if (d.last_validation_error) msg += "\n\nПоследняя ошибка валидации:\n" + d.last_validation_error;
+    return msg;
+  }
+  return String(d || "Ошибка " + status);
+}
+
+// kind из detail-объекта: ожидаемые ситуации бэкенда (исчерпан лимит ProxyAPI —
+// 503, rate-limit — 429) показываются как есть, предупреждением, не «ошибкой».
+const WARN_KINDS = new Set(["proxyapi_insufficient_funds", "rate_limited"]);
+function detailKind(status, data) {
+  const d = data && data.detail;
+  return (d && typeof d === "object" && d.kind) || "";
+}
+
+document.getElementById("build").addEventListener("click", async () => {
+  const description = document.getElementById("description").value.trim();
+  setError("");
+  if (!description) { setError("Опишите процесс или выберите готовый пример."); return; }
+
+  const btn = document.getElementById("build");
+  btn.disabled = true;
+  setStatus("Прогоняем 4 стадии пайплайна через LLM — обычно 20–60 секунд…");
+  try {
+    const resp = await fetch("/blueprint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      setError(detailMsg(resp.status, data), WARN_KINDS.has(detailKind(resp.status, data)));
+      return;
+    }
+    renderBlueprint(data);
+  } catch (e) {
+    setError("Сервер недоступен: " + e);
+  } finally {
+    btn.disabled = false;
+    setStatus("");
+  }
+});
+
+document.getElementById("examples").addEventListener("change", async (ev) => {
+  const name = ev.target.value;
+  if (!name) return;
+  setError("");
+  setStatus("Загружаю пример…");
+  try {
+    const resp = await fetch("/examples/" + encodeURIComponent(name));
+    const data = await resp.json();
+    if (!resp.ok) { setError(detailMsg(resp.status, data)); return; }
+    document.getElementById("description").value = data.process;
+    renderBlueprint(data);
+  } catch (e) {
+    setError("Сервер недоступен: " + e);
+  } finally {
+    setStatus("");
+  }
+});
+
+async function init() {
+  try {
+    const [exResp, cfgResp, taxResp] = await Promise.all([
+      fetch("/examples"),
+      fetch("/config/blocks"),
+      fetch("/config/taxonomy"),
+    ]);
+    const exData = await exResp.json();
+    if (exResp.ok) {
+      const sel = document.getElementById("examples");
+      for (const name of exData.examples) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      }
+    }
+    if (cfgResp.ok) blockLabels = await cfgResp.json();
+    if (taxResp.ok) categoryLabels = await taxResp.json();
+  } catch (e) {
+    // Без бэкенда страница всё равно откроется — кнопка покажет ошибку при клике.
+  }
+}
+
+init();
+</script>
+</body>
+</html>
