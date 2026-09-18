@@ -15,7 +15,7 @@ from app.schemas import build_blueprint_model
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BLUEPRINT_DIR = PROJECT_ROOT / "examples" / "blueprints"
-NAMES = ["example_1", "example_2_ambiguous"]
+NAMES = ["example_1", "example_2_ambiguous", "example_3_booking", "example_4_ecommerce"]
 
 
 def _load_blueprint(name: str):

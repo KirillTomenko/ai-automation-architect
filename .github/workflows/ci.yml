@@ -1,0 +1,48 @@
+name: CI
+
+# Триггеры: push и pull_request на main. Используется именно pull_request (не
+# pull_request_target): у PR из форков secrets недоступны — поведение GitHub
+# по умолчанию. Здесь секретов нет вовсе: CI не обращается к LLM API ни для
+# одной задачи — живые вызовы ProxyAPI платные и остаются ручной/локальной
+# проверкой (tests/test_pipeline.py, tests/test_api.py в CI не запускаются).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: pip install -r requirements.txt
+
+      # ruff в проекте раньше не использовался: блокируем только реальные
+      # ошибки (синтаксис E9, битые сравнения F63/F7, неопределённые имена F82),
+      # стилистика не проверяется и сборку не ломает.
+      - name: Линт — синтаксис и имена, не стиль
+        run: |
+          pip install ruff==0.16.8
+          ruff check app tests --select E9,F63,F7,F82
+
+      # Только офлайн-тесты: фикстуры examples/ через Pydantic-схемы всех
+      # стадий, guard'ы (диапазон %, enum категории/блока, покрытие шагов,
+      # placeholder ⇔ assumption) и Mermaid-рендер. Ни один шаг не требует
+      # LLM_API_KEY / PROXYAPI_BASE_URL и не делает сетевых вызовов.
+      - name: Офлайн-тесты (схемы + guard'ы + рендер, без LLM)
+        run: python -m pytest tests/test_schemas.py tests/test_render.py
+
+      # Самый долгий шаг — последним: быстрые проверки падают раньше сборки.
+      # Образ собирается только для проверки Dockerfile, никуда не публикуется.
+      - name: Docker build (без публикации)
+        run: docker build -t ai-automation-architect:ci .
