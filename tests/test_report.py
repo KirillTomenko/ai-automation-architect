@@ -178,13 +178,44 @@ def test_itog_section_with_aggregated_effort() -> None:
 
 
 def test_itog_no_mechanical_zeroes() -> None:
-    """example_2: все шаги в HITL — в «Итоге» нет нулевых групп."""
+    """example_2: все шаги в HITL (Этап 1 пуст) — вырожденный случай: вместо
+    обычной MVP-формулировки в «Итоге» явная оговорка про инфраструктуру
+    маршрутизации и эскалации, нулевых групп нет."""
     blueprint = _load_blueprint("example_2_ambiguous")
     report = generate_report(blueprint)
-    assert "Из 3 шагов процесса 3 остаются за человеком." in report
+    assert (
+        "Из 3 шагов процесса ни один не автоматизируется полностью — все "
+        "требуют участия человека из-за неопределённостей в описании процесса "
+        "(см. риски ниже)." in report
+    )
+    assert (
+        "Оценка ниже — это стоимость построения инфраструктуры маршрутизации "
+        "и эскалации, а не стоимость автоматизации самого процесса: 5–7 человеко-дней."
+        in report
+    )
+    # Обычная MVP-формулировка в вырожденном случае не появляется.
+    assert "Ориентировочная оценка внедрения MVP" not in report
     itog = report.split("## Итог")[1].split("##")[0]
     assert "0 можно" not in itog
     assert "0 остаются" not in itog
+
+
+def test_itog_normal_cases_wording_unchanged() -> None:
+    """Есть хотя бы один шаг ≥80% вне HITL — «Итог» остаётся обычной
+    формулировкой, без оговорки про инфраструктуру."""
+    for name, expected in [
+        ("example_1", "Из 4 шагов процесса 3 можно автоматизировать сразу, 1 остаётся за человеком."),
+        (
+            "example_8_legal_consult",
+            ("Из 4 шагов процесса 2 можно автоматизировать сразу, "
+             "1 требует частичной автоматизации, 1 остаётся за человеком."),
+        ),
+    ]:
+        report = generate_report(_load_blueprint(name))
+        assert expected in report
+        assert "ни один не автоматизируется" not in report
+        assert "инфраструктуры маршрутизации" not in report
+        assert "Ориентировочная оценка внедрения MVP: 11–16 человеко-дней." in report
 
 
 def test_mvp_scope_human_summary_from_steps() -> None:

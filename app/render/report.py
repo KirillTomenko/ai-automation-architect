@@ -34,7 +34,10 @@ automation_candidates, human_in_the_loop, note'ы архитектуры, risks,
   шагов не печатаются, чтобы не было механических нулей). Плюс суммарный
   диапазон трудозатрат: диапазоны estimated_effort складываются в один
   диапазон, а не перечисляются по блокам. Если формат оценок не распознан —
-  оценка не печатается вовсе, а не выдумывается.
+  оценка не печатается вовсе, а не выдумывается. Вырожденный случай (Этап 1
+  пуст, ни один шаг не автоматизируется целиком) получает явную оговорку
+  перед оценкой: это стоимость инфраструктуры маршрутизации и эскалации,
+  а не автоматизации самого процесса.
 - В «MVP-scope» над списками in/out — одно предложение человеческим языком:
   система берёт на себя шаги вне human_in_the_loop, остальные остаются за
   сотрудником. Собирается из имён шагов этого blueprint, не хардкод.
@@ -135,6 +138,11 @@ def _itog_paragraph(
     if not n_total:
         return None
     n1, n2, n3 = len(stage1), len(stage2), len(stage3)
+    if not n1:
+        # Вырожденный случай: автоматизировать целиком нечего. Печатаем
+        # явную оговорку, а не суммарный диапазон «как обычно» — иначе
+        # оценка читается как стоимость автоматизации, которой не будет.
+        return _itog_degenerate(blueprint, n_total)
     parts = []
     if n1:
         parts.append(f"{n1} можно автоматизировать сразу")
@@ -157,8 +165,8 @@ def _itog_paragraph(
     return itog
 
 
-def _effort_sentence(blueprint: "Blueprint") -> str | None:
-    """Суммарный диапазон estimated_effort одним предложением или None."""
+def _effort_range_days(blueprint: "Blueprint") -> tuple[int, int] | None:
+    """Суммарный диапазон estimated_effort в человеко-днях или None."""
     lows: list[int] = []
     highs: list[int] = []
     for estimate in blueprint.estimated_effort.values():
@@ -170,10 +178,42 @@ def _effort_sentence(blueprint: "Blueprint") -> str | None:
             return None  # незнакомый формат — оценку не придумываем
     if not lows:
         return None
-    lo, hi = sum(lows), sum(highs)
+    return sum(lows), sum(highs)
+
+
+def _effort_sentence(blueprint: "Blueprint") -> str | None:
+    """Суммарный диапазон estimated_effort одним предложением или None."""
+    rng = _effort_range_days(blueprint)
+    if rng is None:
+        return None
+    lo, hi = rng
     if lo == hi:
         return f"Ориентировочная оценка внедрения MVP: {lo} {_person_days_word(lo)}."
     return f"Ориентировочная оценка внедрения MVP: {lo}–{hi} {_person_days_word(hi)}."
+
+
+def _itog_degenerate(blueprint: "Blueprint", n_total: int) -> str:
+    """«Итог» для вырожденного случая (Этап 1 пуст): явная оговорка перед
+    оценкой — без неё суммарный диапазон читается как обычная MVP-оценка
+    автоматизации, хотя автоматизировать целиком нечего (см. риски)."""
+    gen = "шага" if _is_singular_ru(n_total) else "шагов"
+    itog = (
+        f"Из {n_total} {gen} процесса ни один не автоматизируется полностью — все "
+        "требуют участия человека из-за неопределённостей в описании процесса "
+        "(см. риски ниже)."
+    )
+    rng = _effort_range_days(blueprint)
+    if rng is not None:
+        lo, hi = rng
+        if lo == hi:
+            amount = f"{lo} {_person_days_word(lo)}"
+        else:
+            amount = f"{lo}–{hi} {_person_days_word(hi)}"
+        itog += (
+            " Оценка ниже — это стоимость построения инфраструктуры маршрутизации "
+            f"и эскалации, а не стоимость автоматизации самого процесса: {amount}."
+        )
+    return itog
 
 
 def _mvp_summary_sentence(blueprint: "Blueprint", hitl: set[str]) -> str | None:
