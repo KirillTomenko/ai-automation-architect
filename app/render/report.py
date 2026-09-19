@@ -22,8 +22,15 @@ automation_candidates, human_in_the_loop, note'ы архитектуры, risks,
   получает явную пометку «не выявлено». Молчаливый пропуск выглядел бы как
   недоделанный отчёт, а отсутствие промежуточной зоны само по себе говорит
   о процессе (шаги резко делятся на «автоматизируется целиком» и «за человеком»).
+- Технические ссылки на step_id в скобках («(step_2, step_4)», «(step_4)»)
+  вычищаются из всего клиентского текста: пайплайн иногда ссылается на шаги
+  идентификаторами (пример — риск прогона A кейса 8), в отчёте клиенту им не
+  место. Скобка убирается целиком, только если ВСЁ её содержимое — step_id
+  через запятую, поэтому «(30%)» и пояснения в скобках не затрагиваются.
+  Сам blueprint не меняется — очистка только при рендере.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -66,6 +73,14 @@ _STAGE_EMPTY_NOTE = {
     3: ("Не выявлено шагов, которые полностью остаются за человеком: "
         "каждый шаг автоматизируется целиком или частично."),
 }
+
+# Техническая ссылка: скобка, внутри которой ТОЛЬКО step_id через запятую.
+_STEP_ID_PAREN_RE = re.compile(r"\s*\((?:step_\d+(?:\s*,\s*step_\d+)*)\)")
+
+
+def _client_text(text: str) -> str:
+    """Клиентский текст без технических ссылок на step_id в скобках."""
+    return _STEP_ID_PAREN_RE.sub("", text)
 
 
 def _reason_for_hitl_step(
@@ -111,12 +126,12 @@ def _bullets_stage_auto(
         eligible = cand.automation_pct >= _AUTO_MIN if first else cand.automation_pct < _AUTO_MIN
         if not eligible:
             continue
-        bullet = f"- **{step.name}** — {cand.automation_pct}%"
+        bullet = f"- **{_client_text(step.name)}** — {cand.automation_pct}%"
         if not first:
             # Этап 2: reasoning из JSON встроен в фразу как объяснение,
             # без метки поля — единственная доступная без LLM
             # «переформулировка»; суть не меняется.
-            bullet += f" — {cand.reasoning}"
+            bullet += f" — {_client_text(cand.reasoning)}"
         bullets.append(bullet)
     return bullets
 
@@ -126,8 +141,8 @@ def _bullets_stage3(blueprint: "Blueprint") -> list[str]:
     for number, step in enumerate(blueprint.steps, start=1):
         if step.id not in blueprint.human_in_the_loop:
             continue
-        reason = _reason_for_hitl_step(blueprint, step.id, number)
-        bullets.append(f"- **{step.name}** — {reason}")
+        reason = _client_text(_reason_for_hitl_step(blueprint, step.id, number))
+        bullets.append(f"- **{_client_text(step.name)}** — {reason}")
     return bullets
 
 
@@ -152,12 +167,12 @@ def generate_report(blueprint: "Blueprint") -> str:
 
     if blueprint.risks:
         lines += ["## Риски", ""]
-        lines += [f"- {risk}" for risk in blueprint.risks] + [""]
+        lines += [f"- {_client_text(risk)}" for risk in blueprint.risks] + [""]
     if blueprint.mvp_scope.in_ or blueprint.mvp_scope.out:
         lines += ["## MVP-scope", ""]
         if blueprint.mvp_scope.in_:
-            lines += ["Входит в MVP:"] + [f"- {item}" for item in blueprint.mvp_scope.in_] + [""]
+            lines += ["Входит в MVP:"] + [f"- {_client_text(item)}" for item in blueprint.mvp_scope.in_] + [""]
         if blueprint.mvp_scope.out:
-            lines += ["За пределами MVP:"] + [f"- {item}" for item in blueprint.mvp_scope.out] + [""]
+            lines += ["За пределами MVP:"] + [f"- {_client_text(item)}" for item in blueprint.mvp_scope.out] + [""]
 
     return "\n".join(lines).rstrip()

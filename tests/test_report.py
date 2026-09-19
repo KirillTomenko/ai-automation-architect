@@ -80,6 +80,33 @@ def test_empty_stage2_gets_explicit_note() -> None:
         assert report.index("## Этап 1") < report.index("## Этап 2") < report.index("## Этап 3")
 
 
+def test_step_id_paren_refs_cleaned_from_report() -> None:
+    """Технические ссылки «(step_2, step_4)» из риск-формулировок не попадают
+    в клиентский отчёт (артефакт прогона A кейса 8); содержательные скобки
+    вроде «(30%)» и «(перенос заявки в таблицу)» сохраняются."""
+    blueprint = _load_blueprint("example_1")
+    blueprint.risks = [
+        *blueprint.risks,
+        "Шаги с низким процентом автоматизации (step_2, step_4) требуют участия юристов",
+    ]
+    report = generate_report(blueprint)
+    assert "(step_2, step_4)" not in report
+    assert "Шаги с низким процентом автоматизации требуют участия юристов" in report
+    assert "(30%)" in report
+    assert "(перенос заявки в таблицу)" in report
+
+
+def test_hitl_note_step_id_paren_cleaned() -> None:
+    """Причина в Этапе 3 из note архитектуры тоже чистится от «(step_N)»."""
+    blueprint = _load_blueprint("example_1")
+    for node in blueprint.architecture.nodes:
+        if "step_4" in node.step_ids:
+            node.note = "Эскалация на руководителя (step_4) при сложных обращениях"
+    report = generate_report(blueprint)
+    assert "(step_4)" not in report
+    assert "Эскалация на руководителя при сложных обращениях" in report
+
+
 def test_hitl_takes_precedence_over_high_pct() -> None:
     """example_5: step_1 имеет 80%, но в HITL (канал входа не назван) — только Этап 3."""
     blueprint = _load_blueprint("example_5_hr_onboarding")
