@@ -13,7 +13,7 @@
 from pathlib import Path
 
 from app.config_loader import load_block_catalog, load_taxonomy
-from app.render.report import generate_report
+from app.render.report import DEFAULT_NEXT_STEP_TEXT, generate_report
 from app.schemas import build_blueprint_model
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -163,3 +163,48 @@ def test_no_technical_terms_and_deterministic() -> None:
         for block_type in block_types:
             assert block_type not in report
         assert generate_report(blueprint) == report
+
+
+def test_itog_section_with_aggregated_effort() -> None:
+    """example_1: «Итог» сразу после описания, перед Этапом 1; цифры этапов
+    согласованы; диапазоны estimated_effort складываются в один диапазон
+    (2–3 + 3–4 + 2–3 + 3–4 + 1–2 = 11–16), а не перечисляются по блокам."""
+    blueprint = _load_blueprint("example_1")
+    report = generate_report(blueprint)
+    assert report.index("## Итог") < report.index("## Этап 1")
+    assert report.index(blueprint.process) < report.index("## Итог")
+    assert "Из 4 шагов процесса 3 можно автоматизировать сразу, 1 остаётся за человеком." in report
+    assert "Ориентировочная оценка внедрения MVP: 11–16 человеко-дней." in report
+
+
+def test_itog_no_mechanical_zeroes() -> None:
+    """example_2: все шаги в HITL — в «Итоге» нет нулевых групп."""
+    blueprint = _load_blueprint("example_2_ambiguous")
+    report = generate_report(blueprint)
+    assert "Из 3 шагов процесса 3 остаются за человеком." in report
+    itog = report.split("## Итог")[1].split("##")[0]
+    assert "0 можно" not in itog
+    assert "0 остаются" not in itog
+
+
+def test_mvp_scope_human_summary_from_steps() -> None:
+    """example_8: предложение над списками in/out собрано из шагов blueprint,
+    а не зашито в код: свои имена шагов и свой критерий для каждого кейса."""
+    blueprint = _load_blueprint("example_8_legal_consult")
+    report = generate_report(blueprint)
+    mvp = report.split("## MVP-scope")[1]
+    summary = mvp.split("Входит в MVP:")[0]
+    assert "которая сама возьмёт на себя" in summary
+    assert "«Получение вопроса от клиента в WhatsApp»" in summary
+    assert "«Назначение платной консультации и отправка ссылки на оплату»" in summary
+    assert "пока останется за сотрудником" in summary
+
+
+def test_next_step_section_default_and_custom() -> None:
+    """«Следующий шаг» — последняя секция отчёта; дефолт переопределяется
+    параметром next_step_text, контакты не зашиты в код."""
+    blueprint = _load_blueprint("example_1")
+    report = generate_report(blueprint)
+    assert report.endswith(DEFAULT_NEXT_STEP_TEXT)
+    custom = generate_report(blueprint, next_step_text="Напишите на hello@company.ru.")
+    assert custom.endswith("Напишите на hello@company.ru.")

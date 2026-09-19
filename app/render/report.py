@@ -28,6 +28,19 @@ automation_candidates, human_in_the_loop, note'ы архитектуры, risks,
   место. Скобка убирается целиком, только если ВСЁ её содержимое — step_id
   через запятую, поэтому «(30%)» и пояснения в скобках не затрагиваются.
   Сам blueprint не меняется — очистка только при рендере.
+- Раздел «Итог» (сразу после описания процесса, перед Этапом 1): агрегат
+  по этапам — сколько шагов можно автоматизировать сразу, сколько частично,
+  сколько остаётся за человеком (числа согласуются по-русски; группы без
+  шагов не печатаются, чтобы не было механических нулей). Плюс суммарный
+  диапазон трудозатрат: диапазоны estimated_effort складываются в один
+  диапазон, а не перечисляются по блокам. Если формат оценок не распознан —
+  оценка не печатается вовсе, а не выдумывается.
+- В «MVP-scope» над списками in/out — одно предложение человеческим языком:
+  система берёт на себя шаги вне human_in_the_loop, остальные остаются за
+  сотрудником. Собирается из имён шагов этого blueprint, не хардкод.
+- Раздел «Следующий шаг» в самом конце — текст-заглушка, параметр
+  next_step_text с дефолтом DEFAULT_NEXT_STEP_TEXT: конкретные контакты
+  в код не зашиваются, их задаёт вызывающий.
 """
 
 import re
@@ -81,6 +94,110 @@ _STEP_ID_PAREN_RE = re.compile(r"\s*\((?:step_\d+(?:\s*,\s*step_\d+)*)\)")
 def _client_text(text: str) -> str:
     """Клиентский текст без технических ссылок на step_id в скобках."""
     return _STEP_ID_PAREN_RE.sub("", text)
+
+
+# Текст-заглушка финальной секции; контакты задаёт вызывающий, не код.
+DEFAULT_NEXT_STEP_TEXT = "Свяжитесь с нами, чтобы обсудить детали внедрения."
+
+# Оценка трудозатрат блока: «2–3 человеко-дня» (тире — длинное, среднее или дефис).
+_ESTIMATE_RE = re.compile(r"^(\d+)\s*[–—-]\s*(\d+)\s*человеко-дн", re.IGNORECASE)
+
+
+def _is_singular_ru(n: int) -> bool:
+    """Согласование в единственном числе: 1, 21, 31… (но не 11)."""
+    return n % 10 == 1 and n % 100 != 11
+
+
+def _person_days_word(n: int) -> str:
+    """«человеко-день / человеко-дня / человеко-дней» по числу."""
+    if n % 100 in (11, 12, 13, 14):
+        return "человеко-дней"
+    if n % 10 == 1:
+        return "человеко-день"
+    if n % 10 in (2, 3, 4):
+        return "человеко-дня"
+    return "человеко-дней"
+
+
+def _ru_list(items: list[str]) -> str:
+    """Список в ёлочках: «A», «B» и «C»."""
+    quoted = [f"«{item}»" for item in items]
+    if len(quoted) == 1:
+        return quoted[0]
+    return ", ".join(quoted[:-1]) + " и " + quoted[-1]
+
+
+def _itog_paragraph(
+    blueprint: "Blueprint", stage1: list[str], stage2: list[str], stage3: list[str]
+) -> str | None:
+    """Агрегат для раздела «Итог»: этапы + суммарный диапазон трудозатрат."""
+    n_total = len(blueprint.steps)
+    if not n_total:
+        return None
+    n1, n2, n3 = len(stage1), len(stage2), len(stage3)
+    parts = []
+    if n1:
+        parts.append(f"{n1} можно автоматизировать сразу")
+    if n2:
+        verb = "требует" if _is_singular_ru(n2) else "требуют"
+        parts.append(f"{n2} {verb} частичной автоматизации")
+    if n3:
+        verb = "остаётся" if _is_singular_ru(n3) else "остаются"
+        parts.append(f"{n3} {verb} за человеком")
+    if not parts:
+        return None
+    gen = "шага" if _is_singular_ru(n_total) else "шагов"
+    if n1 + n2 + n3 == n_total:
+        itog = f"Из {n_total} {gen} процесса {', '.join(parts)}."
+    else:
+        itog = f"Процесс состоит из {n_total} {gen}: {', '.join(parts)}."
+    effort = _effort_sentence(blueprint)
+    if effort:
+        itog += " " + effort
+    return itog
+
+
+def _effort_sentence(blueprint: "Blueprint") -> str | None:
+    """Суммарный диапазон estimated_effort одним предложением или None."""
+    lows: list[int] = []
+    highs: list[int] = []
+    for estimate in blueprint.estimated_effort.values():
+        match = _ESTIMATE_RE.match(estimate.strip())
+        if match:
+            lows.append(int(match.group(1)))
+            highs.append(int(match.group(2)))
+        else:
+            return None  # незнакомый формат — оценку не придумываем
+    if not lows:
+        return None
+    lo, hi = sum(lows), sum(highs)
+    if lo == hi:
+        return f"Ориентировочная оценка внедрения MVP: {lo} {_person_days_word(lo)}."
+    return f"Ориентировочная оценка внедрения MVP: {lo}–{hi} {_person_days_word(hi)}."
+
+
+def _mvp_summary_sentence(blueprint: "Blueprint", hitl: set[str]) -> str | None:
+    """Обобщающее предложение для MVP-scope из шагов этого blueprint."""
+    auto_names = [_client_text(s.name) for s in blueprint.steps if s.id not in hitl]
+    human_names = [_client_text(s.name) for s in blueprint.steps if s.id in hitl]
+    if auto_names and human_names:
+        noun = "шаг" if len(human_names) == 1 else "шаги"
+        verb = "останется" if len(human_names) == 1 else "останутся"
+        return (
+            f"Вы получите систему, которая сама возьмёт на себя {_ru_list(auto_names)}, — "
+            f"{noun} {_ru_list(human_names)} пока {verb} за сотрудником."
+        )
+    if auto_names:
+        return (
+            "Вы получите систему, которая сама возьмёт на себя все шаги процесса: "
+            f"{_ru_list(auto_names)}."
+        )
+    if human_names:
+        return (
+            "Вы получите основу для автоматизации — карту процесса, актёров и "
+            f"архитектуру, — сами шаги {_ru_list(human_names)} пока останутся за сотрудником."
+        )
+    return None
 
 
 def _reason_for_hitl_step(
@@ -146,7 +263,9 @@ def _bullets_stage3(blueprint: "Blueprint") -> list[str]:
     return bullets
 
 
-def generate_report(blueprint: "Blueprint") -> str:
+def generate_report(
+    blueprint: "Blueprint", next_step_text: str = DEFAULT_NEXT_STEP_TEXT
+) -> str:
     """Финальный Blueprint → Markdown-отчёт для клиента. Без LLM, детерминированно."""
     candidates = _candidate_map(blueprint)
     hitl = set(blueprint.human_in_the_loop)
@@ -156,6 +275,10 @@ def generate_report(blueprint: "Blueprint") -> str:
     stage3 = _bullets_stage3(blueprint)
 
     lines = ["# Automation Blueprint — отчёт для клиента", "", blueprint.process, ""]
+
+    itog = _itog_paragraph(blueprint, stage1, stage2, stage3)
+    if itog:
+        lines += ["## Итог", "", itog, ""]
 
     stage_bullets = {1: stage1, 2: stage2, 3: stage3}
     for number in (1, 2, 3):
@@ -170,9 +293,14 @@ def generate_report(blueprint: "Blueprint") -> str:
         lines += [f"- {_client_text(risk)}" for risk in blueprint.risks] + [""]
     if blueprint.mvp_scope.in_ or blueprint.mvp_scope.out:
         lines += ["## MVP-scope", ""]
+        summary = _mvp_summary_sentence(blueprint, hitl)
+        if summary:
+            lines += [summary, ""]
         if blueprint.mvp_scope.in_:
             lines += ["Входит в MVP:"] + [f"- {_client_text(item)}" for item in blueprint.mvp_scope.in_] + [""]
         if blueprint.mvp_scope.out:
             lines += ["За пределами MVP:"] + [f"- {_client_text(item)}" for item in blueprint.mvp_scope.out] + [""]
+
+    lines += ["## Следующий шаг", "", _client_text(next_step_text), ""]
 
     return "\n".join(lines).rstrip()
