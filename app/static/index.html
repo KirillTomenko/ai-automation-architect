@@ -5,53 +5,83 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Automation Architect</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<!-- Шрифты — те же, что на лендинге (все с нативной кириллицей); без сети
+     страница остаётся читаемой на системных фолбэках. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* Палитра и типографика — дизайн-система лендинка («Годовой отчёт»):
+     кремовая бумага, тёмно-зелёный акцент, тонкие линейки. */
+  :root {
+    --paper: #FAF8F3;
+    --surface: #F3F0E7;
+    --ink: #1C2A42;
+    --ink-2: #616C80;
+    --accent: #1F5C4D;
+    --accent-deep: #174A3E;
+    --hairline: #D8D3C8;
+    --hairline-strong: #B9B2A3;
+    /* янтарный регистр пробелов данных (gap-флаги, hitl-note) — чуть глубже
+       исходного, чтобы не сливался с бежевым фоном карточек */
+    --amber-bg: #FDF3D9;
+    --amber-border: #E3CE8F;
+    --amber-text: #7A612B;
+    --radius: 8px;
+    --ff-display: 'PT Serif', Georgia, 'Times New Roman', serif;
+    --ff-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    --ff-mono: 'JetBrains Mono', 'Consolas', monospace;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1a1a1a; }
+  body { font-family: var(--ff-body); margin: 0; background: var(--paper); color: var(--ink); }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
-  h1 { font-size: 22px; margin: 0; }
-  .subtitle { color: #666; margin: 6px 0 0; }
-  .card { background: #fff; border: 1px solid #d9d9d9; border-radius: 8px; padding: 16px; margin-top: 16px; }
-  h2 { font-size: 17px; margin: 0 0 10px; }
-  label { font-size: 14px; color: #444; }
-  textarea { width: 100%; min-height: 110px; font: inherit; padding: 8px; border: 1px solid #d9d9d9; border-radius: 6px; margin-top: 6px; }
+  h1 { font-family: var(--ff-display); font-size: 24px; margin: 0; }
+  .subtitle { color: var(--ink-2); margin: 6px 0 0; }
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius); box-shadow: 0 1px 3px rgba(28, 42, 66, 0.05); padding: 18px 20px; margin-top: 16px; }
+  h2 { font-family: var(--ff-display); font-size: 19px; margin: 0 0 10px; }
+  label { font-size: 14px; color: var(--ink-2); }
+  textarea { width: 100%; min-height: 110px; font: inherit; padding: 10px 12px; background: var(--paper); border: 1px solid var(--hairline-strong); border-radius: 6px; margin-top: 6px; color: var(--ink); }
+  textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   select, button { font: inherit; border-radius: 6px; }
-  select { padding: 8px; border: 1px solid #d9d9d9; margin-top: 6px; }
-  button { background: #2563eb; color: #fff; border: 0; padding: 10px 16px; cursor: pointer; }
-  button:disabled { opacity: .6; cursor: default; }
+  select { padding: 8px 10px; background: var(--paper); border: 1px solid var(--hairline-strong); margin-top: 6px; color: var(--ink); }
+  button { background: var(--accent); color: #FBFAF6; border: 0; padding: 10px 18px; border-radius: var(--radius); font-weight: 600; font-size: 14px; cursor: pointer; transition: background .2s ease, transform .15s ease; }
+  button:hover:not(:disabled) { background: var(--accent-deep); transform: translateY(-1px); }
+  button:disabled { opacity: .5; cursor: default; }
   .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-  .status { color: #666; font-size: 14px; }
-  .error { color: #b32821; background: #fdecec; border: 1px solid #f3c1c1; border-radius: 6px; padding: 10px; margin-top: 10px; white-space: pre-wrap; display: none; }
+  .status { color: var(--ink-2); font-size: 14px; }
+  .error { color: #8F2A22; background: #FBE9E7; border: 1px solid #EFC4BE; border-radius: 6px; padding: 10px; margin-top: 10px; white-space: pre-wrap; display: none; }
   /* Ожидаемые ситуации (лимит ProxyAPI, rate-limit) — предупреждение, а не сбой. */
-  .error.warn { background: #fff8e6; border-color: #f0e0b0; color: #8a6d3b; }
+  .error.warn { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber-text); }
   .candidates { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-  .cand { border: 1px solid #d9d9d9; border-radius: 6px; padding: 12px; }
+  .cand { background: var(--paper); border: 1px solid var(--hairline); border-radius: 6px; padding: 12px; }
   .cand .step { font-weight: 600; }
-  .cand .cat { color: #666; font-size: 13px; margin-top: 2px; }
+  .cand .step-id { font-family: var(--ff-mono); font-size: 12px; font-weight: 400; color: var(--ink-2); }
+  .cand .cat { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
   .badge { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #fff; }
-  .cand .why { margin-top: 8px; font-size: 14px; }
+  .cand .why { margin-top: 8px; font-size: 14px; color: var(--ink-2); }
   /* Флаг пробела данных: тот же янтарный регистр, что hitl-note и gap-ноды
      диаграммы — не «мелочь оформления», а то, что risks называют причиной риска. */
-  .cand-gap { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 6px; color: #8a6d3b; font-size: 13px; margin-top: 8px; padding: 6px 8px; }
+  .cand-gap { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 6px; color: var(--amber-text); font-size: 13px; margin-top: 8px; padding: 6px 8px; }
   .diagrams { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 900px) { .diagrams { grid-template-columns: 1fr; } }
-  .diagram { border: 1px solid #d9d9d9; border-radius: 6px; padding: 8px; background: #fff; overflow-x: auto; }
-  .diagram h3 { margin: 4px 0 8px; font-size: 14px; color: #666; }
-  .diagram pre { font-size: 12px; white-space: pre-wrap; }
+  .diagram { border: 1px solid var(--hairline); border-radius: 6px; padding: 10px; background: var(--paper); overflow-x: auto; }
+  .diagram h3 { margin: 2px 0 8px; font-family: var(--ff-mono); font-size: 11.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  .diagram pre { font-family: var(--ff-mono); font-size: 12px; white-space: pre-wrap; }
   ul { margin: 6px 0; padding-left: 20px; }
   li { margin: 4px 0; font-size: 14px; }
   .mvp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .mvp h3 { margin: 0 0 4px; font-size: 14px; }
   table { border-collapse: collapse; width: 100%; }
-  th, td { text-align: left; border-bottom: 1px solid #d9d9d9; padding: 6px 8px; font-size: 14px; }
-  .process-text { background: #f8f9fa; border-left: 3px solid #d0d4da; border-radius: 4px; color: #333; font-size: 14px; margin: 0 0 10px; padding: 8px 12px; }
-  .report-pre { font: inherit; font-size: 14px; margin: 0; white-space: pre-wrap; }
+  th { font-family: var(--ff-mono); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  th, td { text-align: left; border-bottom: 1px solid var(--hairline); padding: 6px 8px; font-size: 14px; }
+  .process-text { background: var(--paper); border-left: 3px solid var(--accent); border-radius: 4px; color: var(--ink); font-size: 14px; margin: 0 0 10px; padding: 8px 12px; }
+  .report-pre { font: inherit; font-size: 14px; margin: 0; white-space: pre-wrap; background: var(--paper); border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 14px; }
   .chips { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
-  .chips-label { color: #444; font-size: 14px; }
-  .chip { background: #eef2ff; border: 1px solid #d9dce3; border-radius: 10px; color: #374151; font-size: 13px; padding: 2px 10px; }
+  .chips-label { color: var(--ink-2); font-size: 14px; }
+  .chip { background: var(--paper); border: 1px solid var(--hairline-strong); border-radius: 4px; color: var(--ink-2); font-family: var(--ff-mono); font-size: 12px; padding: 2px 9px; }
   .table-wrap { overflow-x: auto; }
-  td.actor-unspecified { background: #fff8e6; color: #8a6d3b; font-style: italic; }
-  .hitl-note { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 6px; color: #8a6d3b; font-size: 13px; margin: 10px 0 0; padding: 8px 10px; }
+  td.actor-unspecified { background: var(--amber-bg); color: var(--amber-text); font-style: italic; }
+  .hitl-note { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 6px; color: var(--amber-text); font-size: 13px; margin: 10px 0 0; padding: 8px 10px; }
 </style>
 </head>
 <body>
@@ -126,7 +156,22 @@
 <script>
 "use strict";
 
-mermaid.initialize({ startOnLoad: false, flowchart: { htmlLabels: true } });
+// Тема «base» + палитра лендинга: бежевые ноды, тёмно-синий текст, серо-зелёные
+// линии. Содержательно диаграммы не меняются; красные HITL- и янтарные gap-ноды
+// перекрашиваются своими classDef поверх темы — это сигналы, а не декор.
+mermaid.initialize({
+  startOnLoad: false,
+  flowchart: { htmlLabels: true, padding: 10 },
+  theme: "base",
+  themeVariables: {
+    fontFamily: "Inter, 'Segoe UI', sans-serif",
+    fontSize: "14px",
+    primaryColor: "#F3F0E7",
+    primaryTextColor: "#1C2A42",
+    primaryBorderColor: "#B9B2A3",
+    lineColor: "#616C80",
+  },
+});
 
 let renderSeq = 0;
 let blockLabels = {};
@@ -194,6 +239,9 @@ async function renderDiagram(id, text) {
   const el = document.getElementById(id);
   el.innerHTML = "";
   try {
+    // Ноды меряются по шрифту: дождаться загрузки Google-шрифтов, иначе
+    // mermaid меряет по фолбэку, а рисует Inter'ом — подписи обрезаются.
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
     const { svg } = await mermaid.render("m" + renderSeq++, text);
     el.innerHTML = svg;
   } catch (e) {
@@ -281,7 +329,7 @@ function renderBlueprint(bp) {
     div.className = "cand";
     div.innerHTML =
       `<div class="step">${hEsc(step ? step.name : c.step_id)} ` +
-      `<span style="color:#666;font-weight:400">(${hEsc(c.step_id)})</span></div>` +
+      `<span class="step-id">(${hEsc(c.step_id)})</span></div>` +
       `<div class="cat">${hEsc(categoryLabels[c.category] || c.category)}</div>` +
       `<span class="badge" style="background:${pctColor(c.automation_pct)}">${c.automation_pct}%</span>` +
       (stepUnspecified ? `<div class="cand-gap">⚠️ Исполнитель не указан в тексте</div>` : "") +
@@ -362,8 +410,8 @@ document.getElementById("build").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("examples").addEventListener("change", async (ev) => {
-  const name = ev.target.value;
+// Загрузка кейса по имени (выпадающий список и deep-link ?example=имя).
+async function loadExample(name) {
   if (!name) return;
   setError("");
   setStatus("Загружаю пример…");
@@ -378,7 +426,9 @@ document.getElementById("examples").addEventListener("change", async (ev) => {
   } finally {
     setStatus("");
   }
-});
+}
+
+document.getElementById("examples").addEventListener("change", (ev) => loadExample(ev.target.value));
 
 // Текстовый отчёт: бэкенд детерминированно собирает текст из полей текущего
 // blueprint (без LLM). Кнопка-переключатель: показано → скрыть; при новом
@@ -429,6 +479,18 @@ async function init() {
     }
     if (cfgResp.ok) blockLabels = await cfgResp.json();
     if (taxResp.ok) categoryLabels = await taxResp.json();
+
+    // Deep-link на кейс (?example=имя&report=1) — для демо-ссылок и скриншотов.
+    const params = new URLSearchParams(location.search);
+    const wanted = params.get("example");
+    if (wanted) {
+      const sel = document.getElementById("examples");
+      if ([...sel.options].some((o) => o.value === wanted)) {
+        sel.value = wanted;
+        await loadExample(wanted);
+        if (params.get("report") === "1") document.getElementById("report-toggle").click();
+      }
+    }
   } catch (e) {
     // Без бэкенда страница всё равно откроется — кнопка покажет ошибку при клике.
   }
