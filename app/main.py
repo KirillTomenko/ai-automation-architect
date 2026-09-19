@@ -25,6 +25,8 @@ from app.pipeline.stage1_extractor import extract_process
 from app.pipeline.stage2_classifier import classify_steps
 from app.pipeline.stage3_architect import compose_architecture
 from app.pipeline.stage4_packager import package_blueprint
+from app.render.report import generate_report
+from app.schemas import build_blueprint_model
 
 # INFO виден в консоли/контейнере; httpx глушим до WARNING — без спама
 # от каждого HTTP-запроса клиента LLM.
@@ -247,6 +249,29 @@ async def create_blueprint(request: BlueprintRequest, http_request: Request) -> 
     except Exception:
         logger.exception("Пайплайн: непредвиденная ошибка")
         raise HTTPException(status_code=500, detail={"error": "внутренняя ошибка пайплайна"})
+
+
+@app.post("/report")
+async def create_report(blueprint_data: dict) -> dict:
+    """Готовый Blueprint → детерминированный текстовый отчёт для клиента.
+
+    Тело запроса — сам Blueprint (JSON): фронт уже держит его в памяти и для
+    готовых примеров, и для живого прогона (у которого нет id), поэтому
+    POST с телом покрывает оба случая. Трансформация полей без LLM —
+    rate-limit не нужен, тарифицируемого вызова нет.
+    """
+    taxonomy = {spec.name: (spec.range_min, spec.range_max) for spec in load_taxonomy()}
+    block_types = [block.name for block in load_block_catalog()]
+    blueprint_model = build_blueprint_model(taxonomy, block_types)
+    try:
+        blueprint = blueprint_model.model_validate(blueprint_data)
+    except ValidationError as exc:
+        logger.warning("Отчёт: входной blueprint не прошёл валидацию схемы: %s", str(exc)[:300])
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "blueprint не прошёл валидацию схемы", "detail": str(exc)[:1000]},
+        ) from exc
+    return {"report": generate_report(blueprint)}
 
 
 @app.get("/", include_in_schema=False)

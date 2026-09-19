@@ -1,0 +1,116 @@
+"""Тесты детерминированного текстового отчёта (app/render/report.py).
+
+Без LLM: blueprint'ы берутся готовые из examples/blueprints. Проверяются
+правила группировки (HITL приоритетнее процента, диапазоны этапов), источники
+причины в Этапе 3 (note архитектуры → риск о шаге → общая формулировка),
+verbatim-сохранность risks/mvp_scope и отсутствие технических терминов.
+Запуск из корня проекта:
+    python -m pytest tests/test_report.py
+"""
+
+from pathlib import Path
+
+from app.config_loader import load_block_catalog, load_taxonomy
+from app.render.report import generate_report
+from app.schemas import build_blueprint_model
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BLUEPRINT_DIR = PROJECT_ROOT / "examples" / "blueprints"
+
+
+def _load_blueprint(name: str):
+    taxonomy = {c.name: (c.range_min, c.range_max) for c in load_taxonomy()}
+    block_types = [b.name for b in load_block_catalog()]
+    raw = (BLUEPRINT_DIR / f"{name}.json").read_text(encoding="utf-8-sig")
+    return build_blueprint_model(
+        taxonomy=taxonomy, block_types=block_types
+    ).model_validate_json(raw)
+
+
+def test_report_structure_and_buckets() -> None:
+    """example_1: секции есть ⇔ есть шаги в их диапазоне; шаги не перепутаны."""
+    blueprint = _load_blueprint("example_1")
+    report = generate_report(blueprint)
+
+    by_cand = {c.step_id: c for c in blueprint.automation_candidates}
+    non_hitl = [s for s in blueprint.steps if s.id not in blueprint.human_in_the_loop]
+    # Пустая секция опускается целиком: заголовок есть ⇔ есть шаги в диапазоне.
+    assert ("## Этап 1" in report) == any(
+        by_cand[s.id].automation_pct >= 80 for s in non_hitl
+    )
+    assert ("## Этап 2" in report) == any(
+        by_cand[s.id].automation_pct < 80 for s in non_hitl
+    )
+    assert "## Этап 3" in report  # HITL у example_1 непустой
+    assert "## Риски" in report
+    assert "## MVP-scope" in report
+
+    def _section(heading: str) -> str:
+        return report.split(heading)[1].split("##")[0] if heading in report else ""
+
+    stage1 = _section("## Этап 1")
+    stage3 = _section("## Этап 3")
+    for step in blueprint.steps:
+        cand = by_cand[step.id]
+        if step.id in blueprint.human_in_the_loop:
+            assert step.name not in stage1
+            assert step.name in stage3
+        elif cand.automation_pct >= 80:
+            assert step.name in stage1
+
+
+def test_hitl_takes_precedence_over_high_pct() -> None:
+    """example_5: step_1 имеет 80%, но в HITL (канал входа не назван) — только Этап 3."""
+    blueprint = _load_blueprint("example_5_hr_onboarding")
+    report = generate_report(blueprint)
+    step1 = next(s for s in blueprint.steps if s.id == "step_1")
+    stage1 = report.split("## Этап 1")[1].split("##")[0]
+    stage3 = report.split("## Этап 3")[1].split("##")[0]
+    assert step1.name not in stage1
+    assert step1.name in stage3
+    # Причина — note из архитектуры, а не общая формулировка.
+    note = next(n.note for n in blueprint.architecture.nodes if n.note)
+    assert note in report
+
+
+def test_stage3_reason_prefers_note_then_risk() -> None:
+    """example_7: причины HITL-шагов — note про неоперационализированные критерии."""
+    blueprint = _load_blueprint("example_7_refund_claim")
+    report = generate_report(blueprint)
+    assert "Критерии 'небольшая сумма', 'крупная или спорная' не определены в тексте" in report
+
+
+def test_low_pct_non_hitl_steps_not_lost() -> None:
+    """example_6: step_6 (30%, вне HITL) не выпадает из отчёта — попадает в Этап 2."""
+    blueprint = _load_blueprint("example_6_logistics")
+    report = generate_report(blueprint)
+    step6 = next(s for s in blueprint.steps if s.id == "step_6")
+    assert step6.id not in blueprint.human_in_the_loop
+    stage2 = report.split("## Этап 2")[1].split("##")[0]
+    assert step6.name in stage2
+
+
+def test_risks_and_mvp_verbatim() -> None:
+    """Risks и mvp_scope входят дословно — отчёт не искажает факты JSON."""
+    blueprint = _load_blueprint("example_2_ambiguous")
+    report = generate_report(blueprint)
+    for risk in blueprint.risks:
+        assert risk in report
+    for item in blueprint.mvp_scope.in_:
+        assert item in report
+    for item in blueprint.mvp_scope.out:
+        assert item in report
+
+
+def test_no_technical_terms_and_deterministic() -> None:
+    """Ни категорий таксономии, ни типов блоков; повторный вызов даёт тот же текст."""
+    taxonomy = {c.name: (c.range_min, c.range_max) for c in load_taxonomy()}
+    block_types = [b.name for b in load_block_catalog()]
+    for name in ["example_1", "example_2_ambiguous", "example_7_refund_claim"]:
+        blueprint = _load_blueprint(name)
+        report = generate_report(blueprint)
+        for category in taxonomy:
+            assert category not in report
+        for block_type in block_types:
+            assert block_type not in report
+        assert generate_report(blueprint) == report

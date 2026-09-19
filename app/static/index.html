@@ -45,6 +45,7 @@
   table { border-collapse: collapse; width: 100%; }
   th, td { text-align: left; border-bottom: 1px solid #d9d9d9; padding: 6px 8px; font-size: 14px; }
   .process-text { background: #f8f9fa; border-left: 3px solid #d0d4da; border-radius: 4px; color: #333; font-size: 14px; margin: 0 0 10px; padding: 8px 12px; }
+  .report-pre { font: inherit; font-size: 14px; margin: 0; white-space: pre-wrap; }
   .chips { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
   .chips-label { color: #444; font-size: 14px; }
   .chip { background: #eef2ff; border: 1px solid #d9dce3; border-radius: 10px; color: #374151; font-size: 13px; padding: 2px 10px; }
@@ -74,6 +75,14 @@
   </div>
 
   <div id="result" style="display:none">
+    <div class="row">
+      <button id="report-toggle">Текстовый отчёт</button>
+      <span class="status" style="font-size:13px">отчёт для клиента простым языком — детерминированно из полей Blueprint, без LLM</span>
+    </div>
+    <div class="card" id="report-card" style="display:none">
+      <h2>Текстовый отчёт для клиента</h2>
+      <pre class="report-pre" id="report-text"></pre>
+    </div>
     <div class="card">
       <h2>Business Process</h2>
       <p class="process-text" id="process-text"></p>
@@ -122,6 +131,8 @@ mermaid.initialize({ startOnLoad: false, flowchart: { htmlLabels: true } });
 let renderSeq = 0;
 let blockLabels = {};
 let categoryLabels = {};
+// Blueprint, показанный на странице сейчас; POST /report шлёт его как есть.
+let currentBlueprint = null;
 
 // Placeholder актора Stage 1 (ACTOR_UNSPECIFIED из app/schemas.py).
 // Означает пробел данных, который пайплайн сам считает значимым (risks, reasoning,
@@ -253,6 +264,10 @@ function renderBusinessProcess(bp, byId) {
 function renderBlueprint(bp) {
   setError("");
   document.getElementById("result").style.display = "";
+  currentBlueprint = bp;
+
+  // Отчёт от предыдущего blueprint больше не актуален — прячем до запроса.
+  document.getElementById("report-card").style.display = "none";
 
   const byId = Object.fromEntries(bp.steps.map((s) => [s.id, s]));
   renderBusinessProcess(bp, byId);
@@ -361,6 +376,36 @@ document.getElementById("examples").addEventListener("change", async (ev) => {
   } catch (e) {
     setError("Сервер недоступен: " + e);
   } finally {
+    setStatus("");
+  }
+});
+
+// Текстовый отчёт: бэкенд детерминированно собирает текст из полей текущего
+// blueprint (без LLM). Кнопка-переключатель: показано → скрыть; при новом
+// blueprint карточка прячется в renderBlueprint.
+document.getElementById("report-toggle").addEventListener("click", async () => {
+  const card = document.getElementById("report-card");
+  if (card.style.display !== "none") { card.style.display = "none"; return; }
+  if (!currentBlueprint) { setError("Сначала выберите пример или постройте Blueprint."); return; }
+  setError("");
+  setStatus("Готовлю текстовый отчёт…");
+  const btn = document.getElementById("report-toggle");
+  btn.disabled = true;
+  try {
+    const resp = await fetch("/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentBlueprint),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { setError(detailMsg(resp.status, data)); return; }
+    document.getElementById("report-text").textContent = data.report;
+    card.style.display = "";
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    setError("Сервер недоступен: " + e);
+  } finally {
+    btn.disabled = false;
     setStatus("");
   }
 });
