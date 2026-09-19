@@ -3,7 +3,9 @@
 Без LLM: blueprint'ы берутся готовые из examples/blueprints. Проверяются
 правила группировки (HITL приоритетнее процента, диапазоны этапов), источники
 причины в Этапе 3 (note архитектуры → риск о шаге → общая формулировка),
-verbatim-сохранность risks/mvp_scope и отсутствие технических терминов.
+фиксированная нумерация этапов (пустой этап получает явную пометку «не
+выявлено», а не выбрасывается), verbatim-сохранность risks/mvp_scope и
+отсутствие технических терминов.
 Запуск из корня проекта:
     python -m pytest tests/test_report.py
 """
@@ -34,14 +36,11 @@ def test_report_structure_and_buckets() -> None:
 
     by_cand = {c.step_id: c for c in blueprint.automation_candidates}
     non_hitl = [s for s in blueprint.steps if s.id not in blueprint.human_in_the_loop]
-    # Пустая секция опускается целиком: заголовок есть ⇔ есть шаги в диапазоне.
-    assert ("## Этап 1" in report) == any(
-        by_cand[s.id].automation_pct >= 80 for s in non_hitl
-    )
-    assert ("## Этап 2" in report) == any(
-        by_cand[s.id].automation_pct < 80 for s in non_hitl
-    )
-    assert "## Этап 3" in report  # HITL у example_1 непустой
+    # Нумерация этапов фиксированная: все три заголовка есть всегда, пустой
+    # этап помечается «не выявлено», а не выбрасывается.
+    assert "## Этап 1" in report
+    assert "## Этап 2" in report
+    assert "## Этап 3" in report
     assert "## Риски" in report
     assert "## MVP-scope" in report
 
@@ -49,7 +48,15 @@ def test_report_structure_and_buckets() -> None:
         return report.split(heading)[1].split("##")[0] if heading in report else ""
 
     stage1 = _section("## Этап 1")
+    stage2 = _section("## Этап 2")
     stage3 = _section("## Этап 3")
+    # Пустая секция содержит пометку «не выявлено», непустая — только буллеты.
+    has_full = any(by_cand[s.id].automation_pct >= 80 for s in non_hitl)
+    has_partial = any(by_cand[s.id].automation_pct < 80 for s in non_hitl)
+    assert ("Не выявлено шагов, которые можно автоматизировать целиком" in stage1) != has_full
+    assert ("Не выявлено шагов с частичной автоматизацией" in stage2) != has_partial
+    # Порядок этапов фиксированный, без пропусков номеров.
+    assert report.index("## Этап 1") < report.index("## Этап 2") < report.index("## Этап 3")
     for step in blueprint.steps:
         cand = by_cand[step.id]
         if step.id in blueprint.human_in_the_loop:
@@ -57,6 +64,20 @@ def test_report_structure_and_buckets() -> None:
             assert step.name in stage3
         elif cand.automation_pct >= 80:
             assert step.name in stage1
+
+
+def test_empty_stage2_gets_explicit_note() -> None:
+    """example_1 и example_7: все не-HITL шаги >=80% — Этап 2 пуст, но секция
+    на месте с явной пометкой «не выявлено» (нумерация 1/2/3 без пропусков)."""
+    for name in ["example_1", "example_7_refund_claim"]:
+        blueprint = _load_blueprint(name)
+        report = generate_report(blueprint)
+        by_cand = {c.step_id: c for c in blueprint.automation_candidates}
+        non_hitl = [s for s in blueprint.steps if s.id not in blueprint.human_in_the_loop]
+        assert all(by_cand[s.id].automation_pct >= 80 for s in non_hitl)  # предпосылка
+        assert "## Этап 2 — частичная автоматизация" in report
+        assert "Не выявлено шагов с частичной автоматизацией" in report
+        assert report.index("## Этап 1") < report.index("## Этап 2") < report.index("## Этап 3")
 
 
 def test_hitl_takes_precedence_over_high_pct() -> None:
@@ -88,6 +109,7 @@ def test_low_pct_non_hitl_steps_not_lost() -> None:
     assert step6.id not in blueprint.human_in_the_loop
     stage2 = report.split("## Этап 2")[1].split("##")[0]
     assert step6.name in stage2
+    assert "Не выявлено" not in stage2  # при наличии шагов пометка не нужна
 
 
 def test_risks_and_mvp_verbatim() -> None:
