@@ -7,6 +7,14 @@
 
 ![Результат — Automation Blueprint](docs/screenshot-result.png)
 
+## Demo
+
+See how AI Automation Architect turns a plain-language business process into an Automation Blueprint.
+
+![Demo](docs/demo/ai-automation-architect-demo.gif)
+
+Full-resolution demo: [MP4](docs/demo/ai-automation-architect-demo.mp4)
+
 Описание бизнес-процесса обычным текстом → **Automation Blueprint** (JSON): карта процесса с актёрами и шагами, оценка автоматизируемости каждого шага, предлагаемая архитектура из типовых блоков, риски и MVP-scope.
 
 Система принимает свободное описание — так, как процесс объяснил бы владелец бизнеса в двух-трёх предложениях (до 3000 символов), без формализованных схем. На выходе — структурированный документ: шаги с входами/выходами и исполнителями, процент автоматизации каждого шага, архитектура решения в виде графа из фиксированного каталога блоков, риски, MVP-scope и оценка трудозатрат по блокам, а также готовый текстовый отчёт по этапам — для показа клиенту без разбора JSON.
